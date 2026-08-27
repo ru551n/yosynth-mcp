@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.venv/
+uv.lock
+
+# Yosys synthesis outputs
+*.json
+yosynth_out/
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+
+# Agent state
+.maki/
