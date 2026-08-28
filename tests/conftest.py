@@ -1,9 +1,12 @@
 """Shared fixtures.
 
-``config_env`` resolves the test configuration from the environment with
-sane local fallbacks (the plugin and the GHDL std/ieee library caches of
-a no-sudo install), so the end-to-end tests run both in a plain shell and
-under ``uvx``-style isolated environments.
+The test configuration is taken from the environment as-is: the
+``YOSYNTH_MCP_*`` variables when set, otherwise the config probes
+(``yosys-config --datdir`` for the plugin, ``ghdl --dispconfig`` for the
+GHDL library prefix) do the discovery. End-to-end tests run wherever a
+full yosys + ghdl plugin + compiled GHDL std/ieee setup exists (a local
+install, the hdlc/ghdl:yosys image, or the CI fresh-build job) and are
+skipped — not failed — elsewhere.
 """
 
 from __future__ import annotations
@@ -18,20 +21,6 @@ import pytest
 from yosynth_mcp.config import Config, ConfigError, load_config
 
 DESIGNS_DIR = Path(__file__).parent / "designs"
-
-# Local (no-sudo) install locations, used as fallbacks when the YOSYNTH_MCP_*
-# environment variables are not set.
-FALLBACK_PLUGIN = Path.home() / ".local" / "share" / "yosys" / "plugins" / "ghdl.so"
-FALLBACK_GHDL_PREFIX = Path.home() / ".local" / "share" / "ghdl" / "ghdl"
-
-
-def test_env() -> dict[str, str]:
-    env = dict(os.environ)
-    if "YOSYNTH_MCP_GHDL_PLUGIN" not in env and FALLBACK_PLUGIN.is_file():
-        env["YOSYNTH_MCP_GHDL_PLUGIN"] = str(FALLBACK_PLUGIN)
-    if "YOSYNTH_MCP_GHDL_PREFIX" not in env and FALLBACK_GHDL_PREFIX.is_dir():
-        env["YOSYNTH_MCP_GHDL_PREFIX"] = str(FALLBACK_GHDL_PREFIX)
-    return env
 
 
 def _prefix_usable(prefix: str | None) -> bool:
@@ -56,7 +45,7 @@ def e2e_available(env: dict[str, str]) -> bool:
 
 @pytest.fixture
 def config_env() -> dict[str, str]:
-    return test_env()
+    return dict(os.environ)
 
 
 @pytest.fixture
