@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# The hdlc/ghdl:yosys image bundles yosys, the ghdl yosys plugin and the
+# compiled GHDL std/ieee libraries, so the full suite (including the
+# end-to-end synthesis tests) runs without any extra setup. The server
+# discovers the plugin (yosys-config --datdir) and the GHDL prefix
+# (ghdl --dispconfig) on its own; no YOSYNTH_MCP_* variables are set.
+jobs:
+  test:
+    name: Tests (hdlc/ghdl:yosys)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: hdlc/ghdl:yosys
+    steps:
+      - name: Install prerequisites (git, curl)
+        run: |
+          set -e
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update
+            (command -v git  || apt-get install -y --no-install-recommends git)
+            (command -v curl || apt-get install -y --no-install-recommends curl)
+          fi
+          command -v git
+          command -v curl
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check .
+      - name: Type-check
+        run: uv run mypy
+      - name: Run tests
+        run: uv run pytest -q
+      - name: Assert the end-to-end tests really ran
+        # Guards against the e2e tests being silently skipped (e.g. if the
+        # image ever stops shipping the compiled GHDL std/ieee libraries):
+        # the whole point of this job is a real yosys + ghdl + plugin run.
+        run: >
+          uv run python -c
+          "import os; from tests.conftest import e2e_available;
+          assert e2e_available(dict(os.environ)),
+          'e2e setup (yosys + ghdl plugin + GHDL std/ieee libs) not available
+          in the container'"
+
+# Since yosys, GHDL and the plugin all change independently, this job
+# rebuilds all three from master and runs the suite against the fresh
+# interfaces: the yosys CLI/script contract (-m/-p, flows, stat,
+# write_json), the ghdl frontend CLI (-e/-read/-g/-std), the
+# yosys-config / ghdl --dispconfig discovery probes, and especially the
+# resource parsing (stat sections, port/netlist extraction).
+  latest-eda:
+    name: EDA interface tests (fresh yosys + GHDL + plugin)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and install GHDL (master)
+        # Recipe mirrored from ghdl-yosys-plugin/ci.sh: --enable-synth is
+        # what the plugin links against, and `make all` (mcode backend)
+        # also compiles the std/ieee VHDL libraries that `make install`
+        # places under /usr/local/lib/ghdl.
+        run: |
+          set -ex
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc gnat git
+          git clone https://github.com/ghdl/ghdl
+          cd ghdl
+          ./configure --enable-libghdl --enable-synth
+          make all GNATMAKE="gnatmake -j$(nproc)"
+          sudo make install
+          ghdl --version
+          test -d /usr/local/lib/ghdl/std
+          test -d /usr/local/lib/ghdl/ieee
+      - name: Build and install yosys (master)
+        # CMake build, INSTALL_LIBRARY=ON so the plugin links libyosys and
+        # yosys-config --ldflags works (same recipe as ghdl-yosys-plugin/ci.sh).
+        # ubuntu-latest ships CMake 3.28, which yosys master requires.
+        run: |
+          set -ex
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential clang bison flex libreadline-dev tcl-dev \
+            libffi-dev pkg-config python3 zlib1g-dev
+          cmake --version
+          git clone --recursive https://github.com/YosysHQ/yosys.git
+          cmake -S yosys -B yosys/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DYOSYS_INSTALL_DRIVER=ON \
+            -DYOSYS_INSTALL_LIBRARY=ON \
+            -DYOSYS_WITH_PYTHON=OFF \
+            -DBUILD_SHARED_LIBS=ON
+          cmake --build yosys/build -j"$(nproc)"
+          sudo cmake --install yosys/build
+          yosys --version
+          command -v yosys-config
+      - name: Build ghdl-yosys-plugin (master)
+        # make uses `ghdl --libghdl-{library,include}-dir` and
+        # `yosys-config --exec/--cxx/--cxxflags/--ldflags` to self-locate
+        # the freshly installed components.
+        run: |
+          set -ex
+          git clone https://github.com/ghdl/ghdl-yosys-plugin
+          cd ghdl-yosys-plugin
+          make
+          test -f ghdl.so
+          # Where ghdl keeps its compiled std/ieee libraries.
+          GHDL_PREFIX="$(ghdl --dispconfig | sed -n 's/^library prefix: //p')"
+          test -d "$GHDL_PREFIX/std"
+          echo "YOSYNTH_MCP_GHDL_PREFIX=$GHDL_PREFIX" >> "$GITHUB_ENV"
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Run the EDA interface tests
+        env:
+          YOSYNTH_MCP_YOSYS: /usr/local/bin/yosys
+          YOSYNTH_MCP_GHDL_PLUGIN: ${{ github.workspace }}/ghdl-yosys-plugin/ghdl.so
+        run: uv run pytest -q
+      - name: Assert the end-to-end tests really ran
+        run: >
+          uv run python -c
+          "import os; from tests.conftest import e2e_available;
+          assert e2e_available(dict(os.environ)),
+          'e2e setup (fresh yosys + ghdl plugin + GHDL std/ieee libs) not
+          available'"

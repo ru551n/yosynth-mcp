@@ -5,7 +5,6 @@ __pycache__/
 build/
 dist/
 .venv/
-uv.lock
 
 # Yosys synthesis outputs
 *.json
