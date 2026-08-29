@@ -104,7 +104,7 @@ class TestBuildScript:
     def test_vhdl_top_with_std_and_generics(self):
         script = _script(generics={"WIDTH": "8"}, std="08")
         assert script.startswith(
-            "ghdl --std 08 -gwidth=8 " + COUNTER + " -e counter rtl; "
+            "ghdl --std=08 -gwidth=8 " + COUNTER + " -e counter rtl; "
         )
         assert script.endswith("; stat; write_json /tmp/out.json")
 

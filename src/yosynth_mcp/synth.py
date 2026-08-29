@@ -311,7 +311,10 @@ def build_script(
             )
         ghdl: list[str] = ["ghdl"]
         if std:
-            ghdl += ["--std", std]
+            # GHDL's CLI parser only accepts the joined "--std=CODE" form;
+            # a space-separated "--std CODE" is rejected as an unknown
+            # command option.
+            ghdl += [f"--std={std}"]
         for name, value in generics.items():
             ghdl.append(f"-g{name.lower()}={_param_value(value)}")
         ghdl += [_q(s) for s in vhdl]

@@ -77,6 +77,20 @@ async def test_vhdl_top_default_generic(e2e):
     assert re.search(r"outc\s+output\s+4 bit\(s\)", result)
 
 
+async def test_vhdl_top_with_std(e2e):
+    """std is forwarded as --std=<code>; GHDL rejects the split form."""
+    result = await server.yosynth_synthesize(
+        server.SynthesizeInput(
+            sources=[COUNTER],
+            top="counter",
+            architecture="rtl",
+            chip="generic",
+            std="08",
+        )
+    )
+    assert result.startswith("Synthesis OK"), result
+
+
 async def test_vhdl_top_requires_architecture(e2e):
     result = await server.yosynth_synthesize(
         server.SynthesizeInput(sources=[COUNTER], top="counter", chip="generic")
