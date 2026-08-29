@@ -1,3 +1,8 @@
+---
+name: yosynth-mcp
+description: Synthesize VHDL/Verilog designs and check resource usage through the yosynth-mcp MCP server (yosynth_status, yosynth_inspect, yosynth_targets, yosynth_synthesize). Use when the user asks to synthesize an entity or module, check LUT/FF/gate/resource counts, see netlist ports, or find out which chips/families the installed yosys can target; the server runs yosys with the GHDL plugin per synthesis and returns a short ports+resources summary, and never guesses top, architecture, chip or generic values — it asks the user.
+---
+
 # Yosynth MCP
 
 ## Overview
