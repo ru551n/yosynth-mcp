@@ -1,5 +1,12 @@
 # yosynth-mcp
 
+> **Archived.** This project is superseded by
+> [`tsfpga-mcp`](https://github.com/ru551n/tsfpga-mcp), which provides the
+> same MCP tool surface (synthesize/status/inspect/targets) but drives
+> [`tsfpga`](https://github.com/ru551n/tsfpga)'s Yosys netlist-build
+> classes instead of scripting `yosys`/`ghdl` directly. No further changes
+> will be made here — please use `tsfpga-mcp` going forward.
+
 MCP (stdio) server that lets an LLM/agent **synthesize VHDL and Verilog
 designs with GHDL + Yosys** and get back a *short summary of the relevant
 resources* — the top-level ports and the post-flow resource counts (cells
