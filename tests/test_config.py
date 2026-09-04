@@ -15,7 +15,7 @@ def _no_probes(monkeypatch):
     The probes are covered by TestProbes below (which re-patches the
     low-level _run_probe per test); without this, tests asserting
     "no plugin" / "no prefix" would depend on what is installed on the
-    host (and inside CI containers like hdlc/ghdl:yosys, where the
+    host (and inside CI containers like ru551n/hdl-docker, where the
     probes would succeed by design).
     """
     monkeypatch.setattr(config, "_run_probe", lambda argv: None)

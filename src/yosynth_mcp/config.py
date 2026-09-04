@@ -67,7 +67,7 @@ def _probe_datdir_plugin(yosys: str) -> Path | None:
 
     The ghdl-yosys-plugin installs itself as ``<datdir>/plugins/ghdl.so``,
     which is also where yosys looks for a bare ``-m ghdl`` — so this is a
-    sound last-resort fallback (e.g. inside the hdlc/ghdl:yosys image,
+    sound last-resort fallback (e.g. inside the ru551n/hdl-docker image,
     where no plugin env var is set).
     """
     candidates: list[str] = []

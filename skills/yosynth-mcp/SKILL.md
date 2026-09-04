@@ -141,8 +141,10 @@ runtime — never assume a flow exists just because a chip is listed.
   netlist (and the `submodules:` line) a VHDL unit appears as
   `<entity>_B<arch>` — yosys's escape of the qualified name
   `entity.arch` (e.g. entity `vsub`, arch `rtl` → `vsub_Brtl`).
-- A **VHDL top cannot instantiate Verilog** (the plugin does not support
-  it); the server rejects such a design with an explanatory error.
+- A **VHDL top may instantiate Verilog units** too: pass both files in
+  `sources`; the server reads the Verilog first, so GHDL's unbound
+  component instantiation binds straight to the real Verilog module
+  instead of becoming a black box.
 
 **Synthesis failed**
 → Read the `Diagnostics:` (the actual yosys/GHDL errors) and the `Hint:`.

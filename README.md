@@ -13,8 +13,9 @@ script picks the frontend by top-level language:
   (`-g name=value`).
 - **Verilog / SystemVerilog top**: `read_verilog [-sv]` + `chparam`
   parameter overrides. VHDL units may be imported for the Verilog top to
-  instantiate (`ghdl -read <files>`); the other direction (a VHDL top
-  instantiating Verilog) is not supported by the plugin.
+  instantiate (`ghdl -read <files>`). The other direction also works: a
+  VHDL top may instantiate Verilog units (`read_verilog` runs first, then
+  `ghdl -e`) — mixed-language synthesis is a documented GHDL+Yosys feature.
 
 The script then runs the chip's synthesis flow (`synth`, `synth_ice40`,
 `synth_xilinx`, ...), `stat` and `write_json`; the server parses the port
@@ -42,7 +43,7 @@ server:
    `YOSYNTH_MCP_GHDL_PREFIX` (the directory containing `std/`, `ieee/`,
    `src/`).
 
-The [`hdlc/ghdl:yosys`](https://github.com/hdlc/hdlc/tree/master) Docker
+The [`ru551n/hdl-docker`](https://github.com/ru551n/hdl-docker) Docker
 image provides all three out of the box — this repo's CI runs in it.
 
 ## Setup
@@ -117,8 +118,8 @@ Resources:
 
 - **Mixed language**: a Verilog top may instantiate VHDL units (pass both
   files in `sources`; the VHDL units appear in the netlist as
-  `<entity>_B<arch>`, e.g. `vsub_Brtl`). A VHDL top *cannot* instantiate
-  Verilog — the plugin does not support that direction.
+  `<entity>_B<arch>`, e.g. `vsub_Brtl`). A VHDL top may instantiate
+  Verilog units too — pass both files in `sources`.
 - **`sources` must cover everything the top needs** — GHDL has no
   work-library state between runs, so a missing file shows up as
   "not found in library" at synthesis time.
@@ -156,9 +157,10 @@ uv run mypy
 ```
 
 The end-to-end tests synthesize real designs (VHDL top, Verilog top with a
-VHDL submodule, SystemVerilog top) through the real yosys + ghdl plugin and
-are skipped — not failed — on machines without the full setup. CI runs the
-full suite inside the `hdlc/ghdl:yosys` image.
+VHDL submodule, VHDL top with a Verilog submodule, SystemVerilog top)
+through the real yosys + ghdl plugin and are skipped — not failed — on
+machines without the full setup. CI runs the full suite inside the
+`ru551n/hdl-docker` image.
 
 ## License
 

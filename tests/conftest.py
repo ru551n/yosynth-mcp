@@ -5,7 +5,7 @@ The test configuration is taken from the environment as-is: the
 (``yosys-config --datdir`` for the plugin, ``ghdl --dispconfig`` for the
 GHDL library prefix) do the discovery. End-to-end tests run wherever a
 full yosys + ghdl plugin + compiled GHDL std/ieee setup exists (a local
-install, the hdlc/ghdl:yosys image, or the CI fresh-build job) and are
+install, the ru551n/hdl-docker image, or the CI fresh-build job) and are
 skipped — not failed — elsewhere.
 """
 

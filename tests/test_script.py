@@ -17,6 +17,8 @@ DESIGNS = Path(__file__).parent / "designs"
 COUNTER = str(DESIGNS / "counter.vhd")
 VSUB = str(DESIGNS / "vsub.vhd")
 VTOP = str(DESIGNS / "vtop.v")
+WRAPPER = str(DESIGNS / "wrapper.vhd")
+VAND = str(DESIGNS / "vand.v")
 
 
 def _script(**overrides: object) -> str:
@@ -112,9 +114,18 @@ class TestBuildScript:
         with pytest.raises(SynthError, match="needs an architecture"):
             _script(architecture=None)
 
-    def test_vhdl_top_rejects_verilog_sources(self):
-        with pytest.raises(SynthError, match="cannot instantiate Verilog"):
-            _script(sources=[COUNTER, VTOP])
+    def test_vhdl_top_with_verilog_submodule(self):
+        """Mixed language: VHDL top, Verilog submodule read before ghdl -e."""
+        script = _script(
+            top="wrapper",
+            sources=[WRAPPER, VAND],
+            systemverilog=False,
+        )
+        assert script == (
+            "read_verilog " + VAND + "; "
+            "ghdl " + WRAPPER + " -e wrapper rtl; "
+            "synth -top wrapper; stat; write_json /tmp/out.json"
+        )
 
     def test_verilog_top_with_vhdl_submodule(self):
         script = _script(

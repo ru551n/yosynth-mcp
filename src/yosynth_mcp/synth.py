@@ -5,16 +5,21 @@ The script always ends with the target flow (``synth[_<chip>] -top <top>``),
 ``stat`` and ``write_json`` so the result can be summarized from the netlist:
 
 - VHDL top level:
-  ``ghdl [--std=XX] [-g name=value ...] <files> -e <top> <arch>; <flow>; ...``
+  ``[read_verilog [-sv] <verilog files>;] ghdl [--std=XX]
+  [-g name=value ...] <vhdl files> -e <top> <arch>; <flow>; ...``
   (GHDL 7.0 takes the architecture as a second positional after ``-e``;
-  generic names are matched case-insensitively, values verbatim.)
+  generic names are matched case-insensitively, values verbatim. Verilog
+  files, if any, are read *first* so an unbound VHDL component
+  instantiation resolves against the real Verilog module already in the
+  design instead of becoming a GHDL black box — mixed-language synthesis
+  is a documented GHDL+Yosys feature, see
+  https://ghdl.github.io/ghdl/using/Synthesis.html#yosys-plugin.)
 - Verilog top level:
   ``[ghdl -read <vhdl files>;] read_verilog [-sv] <verilog files>;
   [chparam -set name value <top> ...]; <flow>; ...``
 (VHDL units imported with ``-read`` appear as ``<entity>_B<arch>``
    modules — yosys's escape of the qualified name ``entity.arch`` — and
-   may be instantiated from the Verilog top; the other direction, a VHDL
-   top instantiating Verilog, is not supported by the plugin.)
+   may be instantiated from the Verilog top.)
 """
 
 from __future__ import annotations
@@ -296,19 +301,21 @@ def build_script(
     steps: list[str] = []
 
     if language == "vhdl":
-        if verilog:
-            raise SynthError(
-                f"VHDL top {top!r} cannot instantiate Verilog "
-                f"({', '.join(map(str, verilog))}): GHDL synthesis "
-                "elaborates VHDL only. Make the top level a Verilog module "
-                "(it may then instantiate the VHDL units)."
-            )
         if not architecture:
             raise SynthError(
                 f"VHDL top {top!r} needs an architecture; pass "
                 "architecture='rtl' (find candidates with e.g. "
                 f"`grep -rn 'architecture .* of {top}'`)"
             )
+        if verilog:
+            # Read the Verilog units first: an unbound VHDL component
+            # instantiation becomes a GHDL black box only if no module of
+            # that name already exists in the design, so this order lets
+            # ghdl's elaboration bind straight to the real Verilog module.
+            readv = ["read_verilog"]
+            if systemverilog:
+                readv.append("-sv")
+            steps.append(" ".join(readv + [_q(s) for s in verilog]))
         ghdl: list[str] = ["ghdl"]
         if std:
             # GHDL's CLI parser only accepts the joined "--std=CODE" form;

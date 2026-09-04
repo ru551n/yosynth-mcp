@@ -2,10 +2,12 @@
 
 Skipped (not failed) on machines without the full synthesis setup — see
 the ``e2e`` fixture in conftest. The designs under tests/designs cover all
-four frontend shapes:
+five frontend shapes:
 
 - VHDL top (counter), with and without generic overrides
 - Verilog top (vtop) instantiating a VHDL unit (vsub) — mixed language
+- VHDL top (wrapper) instantiating a Verilog unit (vand) — mixed language,
+  the other direction
 - SystemVerilog-only top (svtop) with -sv
 """
 
@@ -24,6 +26,8 @@ COUNTER = str(DESIGNS / "counter.vhd")
 VSUB = str(DESIGNS / "vsub.vhd")
 VTOP = str(DESIGNS / "vtop.v")
 SVTOP = str(DESIGNS / "svtop.sv")
+WRAPPER = str(DESIGNS / "wrapper.vhd")
+VAND = str(DESIGNS / "vand.v")
 
 
 @pytest.fixture(autouse=True)
@@ -99,17 +103,19 @@ async def test_vhdl_top_requires_architecture(e2e):
     assert "needs an architecture" in result
 
 
-async def test_vhdl_top_rejects_verilog_sources(e2e):
+async def test_vhdl_top_with_verilog_submodule(e2e):
+    """Mixed language: VHDL top, Verilog submodule (the other direction)."""
     result = await server.yosynth_synthesize(
         server.SynthesizeInput(
-            sources=[COUNTER, VTOP],
-            top="counter",
+            sources=[WRAPPER, VAND],
+            top="wrapper",
             architecture="rtl",
             chip="generic",
         )
     )
-    assert result.startswith("Error:")
-    assert "cannot instantiate Verilog" in result
+    assert result.startswith("Synthesis OK"), result
+    assert re.search(r"y\s+output\s+1 bit\(s\)", result)
+    assert re.search(r"a\s+input\s+1 bit\(s\)", result)
 
 
 async def test_verilog_top_with_vhdl_submodule(e2e):

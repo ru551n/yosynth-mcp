@@ -10,18 +10,20 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# The hdlc/ghdl:yosys image bundles yosys, the ghdl yosys plugin and the
-# compiled GHDL std/ieee libraries, so the full suite (including the
-# end-to-end synthesis tests) runs without any extra setup. The server
-# discovers the plugin (yosys-config --datdir) and the GHDL prefix
-# (ghdl --dispconfig) on its own; no YOSYNTH_MCP_* variables are set.
+# The ru551n/hdl-docker image bundles yosys, the ghdl yosys plugin and the
+# compiled GHDL std/ieee libraries (plus nvc, unused here), so the full
+# suite (including the end-to-end synthesis tests) runs without any extra
+# setup. The server discovers the plugin (yosys-config --datdir) and the
+# GHDL prefix (ghdl --dispconfig) on its own; no YOSYNTH_MCP_* variables
+# are set. Pinned to a specific tag for reproducibility; bump alongside
+# deliberate hdl-docker upgrades.
 jobs:
   test:
-    name: Tests (hdlc/ghdl:yosys)
+    name: Tests (ru551n/hdl-docker)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     container:
-      image: hdlc/ghdl:yosys
+      image: ru551n/hdl-docker:1.1.0
     steps:
       - name: Install prerequisites (git, curl)
         run: |
